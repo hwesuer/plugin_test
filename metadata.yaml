@@ -3,4 +3,4 @@ display_name: 梗学习 # 用于展示的名字，可以是方便人类阅读的
 desc: 一个用来让llm每天定时检测bilibiliup主梗百科是否更新视频和学习视频中介绍的梗的插件 # 插件简短描述
 version: v1.0.0 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: 白明 # 作者
-repo: https://github.com/hwesuer/plugin_t/ # 插件的仓库地址
+repo: https://github.com/hwesuer/plugin_test # 插件的仓库地址

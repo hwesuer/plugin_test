@@ -13,10 +13,10 @@ from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
 
 
-==================== 配置区 ====================
+#==================== 配置区 ====================
 class Config:
     """插件配置类"""
-    def init(self, context: Context):
+    def __init__(self, context: Context):
         self.context = context
         plugin_dir = context.plugin_dir
         config_path = os.path.join(plugin_dir, "config.json")
@@ -52,7 +52,7 @@ class Config:
         return model_name
 
 
-==================== 日志配置 ====================
+#==================== 日志配置 ====================
 def setup_logging():
     """设置日志轮转，每天新建日志文件，保留7天"""
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -68,10 +68,10 @@ def setup_logging():
 logger = setup_logging()
 
 
-==================== B站抓取 ====================
+#==================== B站抓取 ====================
 class BiliFetcher:
     """B站视频抓取器，带超时、重试、限频"""
-    def init(self, uid: str, cookies: str = ""):
+    def __init__(self, uid: str, cookies: str = ""):
         self.uid = uid
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -106,7 +106,7 @@ class BiliFetcher:
                 if attempt == 2:
                     logger.error("获取视频列表失败3次，放弃")
                     return []
-                time.sleep(2  attempt)  # 指数退避
+                time.sleep(2*attempt)  # 指数退避
 
     def get_video_detail(self, bvid: str) -> Optional[Dict]:
         """获取单个视频详情（简介、字幕）"""
@@ -126,13 +126,13 @@ class BiliFetcher:
                 if attempt == 2:
                     logger.error(f"视频 {bvid} 获取失败3次，仅简介模式")
                     return {"bvid": bvid, "description": "", "has_subtitle": False}
-                time.sleep(2  attempt)
+                time.sleep(2*attempt)
 
 
-==================== LLM总结 ====================
+#==================== LLM总结 ====================
 class LLMSummarizer:
     """LLM总结器，带模型回退"""
-    def init(self, config: Config):
+    def __init__(self, config: Config):
         self.config = config
         self.model_name = config.get_llm_model()
         self.api_base = config.llm_config.get("api_base", "")
@@ -166,10 +166,10 @@ class LLMSummarizer:
             return None
 
 
-==================== 知识库存储 ====================
+#==================== 知识库存储 ====================
 class KnowledgeStorage:
     """知识库存储，带权限检查"""
-    def init(self, storage_dir: str):
+    def __init__(self, storage_dir: str):
         self.storage_dir = storage_dir
         os.makedirs(storage_dir, exist_ok=True)
 
@@ -190,12 +190,12 @@ class KnowledgeStorage:
             print(f"错误: 无法写入知识库 {filepath}: {e}")
 
 
-==================== 插件主类 ====================
+#==================== 插件主类 ====================
 @register("bili_geng_plugin", "白明", "B站梗百科自动抓取并总结到知识库", "1.0.0")
 class BiliGengPlugin(Star):
     """B站梗百科插件主类"""
     
-    def init(self, context: Context):
+    def __init__(self, context: Context):
         super().init(context)
         self.config = Config(context)
         self.config = Config(context)
@@ -263,7 +263,7 @@ class BiliGengPlugin(Star):
         logger.info("B站梗百科插件卸载")
 
 
-==================== 手动触发命令 ====================
+#==================== 手动触发命令 ====================
 @filter.command("geng_update")
 async def cmd_geng_update(event: AstrMessageEvent, ctx: Context):
     """手动触发梗百科更新"""

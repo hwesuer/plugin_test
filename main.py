@@ -196,8 +196,7 @@ class BiliGengPlugin(Star):
     """B站梗百科插件主类"""
     
     def __init__(self, context: Context):
-        super().init(context)
-        self.config = Config(context)
+        super().__init__(context)
         self.config = Config(context)
         self.fetcher = BiliFetcher(self.config.bilibili_uid, self.config.cookies)
         self.summarizer = LLMSummarizer(self.config)

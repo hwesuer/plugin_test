@@ -18,33 +18,38 @@ class BlockWords(Star):
         super().__init__(context)
         self.config = config
         self.keywords = []
-        self.data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-        self.data_file = os.path.join(self.data_dir, "blockwords_data.json")
-        self._load_keywords()
+        self.data_file = f"data/{PLUGIN_NAME}_data.json"
+        os.makedirs("data", exist_ok=True)
 
-    def _load_keywords(self):
+        if os.path.exists(self.data_file):
+            self._load_from_file()
+        else:
+            self._load_from_config()
+            self._save_data_file()
+
+    def _load_from_file(self):
         try:
-            os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
-            if os.path.exists(self.data_file):
-                with open(self.data_file, "r", encoding="utf-8") as f:
-                    saved = json.load(f)
-                    self.keywords = saved.get("keywords", [])
-                    logger.info(f"[BlockWords] 从数据文件加载 {len(self.keywords)} 个屏蔽关键词")
-                    return
+            with open(self.data_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                self.keywords = data.get("keywords", [])
+            logger.info(f"[BlockWords] 从数据文件加载 {len(self.keywords)} 个屏蔽关键词")
         except Exception as e:
             logger.error(f"[BlockWords] 读取数据文件失败: {e}")
+            self._load_from_config()
 
+    def _load_from_config(self):
         raw = self.config.get("keywords", [])
         if isinstance(raw, list):
             self.keywords = [str(k).strip() for k in raw if str(k).strip()]
         elif isinstance(raw, str) and raw.strip():
             self.keywords = [k.strip() for k in raw.split(",") if k.strip()]
-        self._save_data_file()
+        else:
+            self.keywords = []
         logger.info(f"[BlockWords] 从配置加载 {len(self.keywords)} 个屏蔽关键词")
 
     def _save_data_file(self):
         try:
-            os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
+            os.makedirs("data", exist_ok=True)
             with open(self.data_file, "w", encoding="utf-8") as f:
                 json.dump({"keywords": self.keywords}, f, ensure_ascii=False, indent=2)
         except Exception as e:

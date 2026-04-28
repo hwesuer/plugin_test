@@ -10,8 +10,7 @@ from astrbot.api.star import register, Star
 logger = logging.getLogger("astrbot")
 
 PLUGIN_NAME = "astrbot_plugin_blockwords"
-DEFAULT_KEYWORDS = ["好"]  # 硬编码默认关键词，与 _conf_schema.json 保持一致
-
+DEFAULT_KEYWORDS = ["好"]  # 插件硬编码的默认屏蔽词
 
 @register(PLUGIN_NAME, "User", "关键词屏蔽插件：消息完全匹配屏蔽词时拦截，不发送给LLM", "1.0.0")
 class BlockWords(Star):
@@ -20,23 +19,26 @@ class BlockWords(Star):
         self.config = config
         self.keywords = []
         
-        # 使用插件自身目录下的 data 文件夹存储数据文件（确保路径唯一）
-        data_dir = os.path.join(self.plugin_dir, "data")
+        # 根据 context 构建全局数据存储路径
+        # 按项目结构推断 AstrBot 根目录，并定位到 data/ 目录
+        # 注意：此方法依赖于运行时的目录结构，并非框架官方API，但经验证有效。
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(context.__file__))))
+        data_dir = os.path.join(base_dir, "data", "astrbot_data", "plugins")
         os.makedirs(data_dir, exist_ok=True)
         self.data_file = os.path.join(data_dir, f"{PLUGIN_NAME}_data.json")
-        
-        # 优先从数据文件加载，如果文件不存在则从配置加载并保存
+
+        # 加载数据文件或从配置/硬编码默认值初始化
         if os.path.exists(self.data_file):
             self._load_from_file()
         else:
             self._load_from_config()
-            # 如果从配置也没加载到任何关键词，则使用硬编码默认值
             if not self.keywords:
                 self.keywords = DEFAULT_KEYWORDS.copy()
                 logger.info(f"[BlockWords] 使用硬编码默认屏蔽词: {self.keywords}")
             self._save_data_file()
 
     def _load_from_file(self):
+        """从数据文件加载关键词"""
         try:
             with open(self.data_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -47,6 +49,7 @@ class BlockWords(Star):
             self._load_from_config()
 
     def _load_from_config(self):
+        """从插件配置中加载关键词"""
         raw = self.config.get("keywords", [])
         if isinstance(raw, list):
             self.keywords = [str(k).strip() for k in raw if str(k).strip()]
@@ -57,6 +60,7 @@ class BlockWords(Star):
         logger.info(f"[BlockWords] 从配置加载 {len(self.keywords)} 个屏蔽关键词")
 
     def _save_data_file(self):
+        """保存关键词到数据文件"""
         try:
             os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
             with open(self.data_file, "w", encoding="utf-8") as f:
@@ -67,8 +71,9 @@ class BlockWords(Star):
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def on_message_check(self, message: AstrMessageEvent):
+        """拦截完全匹配屏蔽词的消息"""
         message_str = message.message_str.strip()
-        if message_str.startswith("/"):
+        if message_str.startswith("/"):  # 忽略命令
             return
         if self.keywords and message_str in self.keywords:
             logger.info(f"[BlockWords] 已屏蔽消息: \"{message_str}\"")
@@ -80,21 +85,16 @@ class BlockWords(Star):
     @filter.command("屏蔽词")
     @filter.command("blockword")
     async def blockword(self, message: AstrMessageEvent):
+        """处理屏蔽词的增删查命令"""
         message_str = message.message_str.strip()
-        # 去除命令前缀（装饰器已处理，但为了兼容保留）
+        # 去除命令前缀
         for prefix in ("/屏蔽词", "/blockword"):
             if message_str.startswith(prefix):
                 message_str = message_str[len(prefix):].strip()
                 break
 
         if not message_str:
-            return CommandResult().message(
-                "关键词屏蔽插件 — 消息完全匹配屏蔽词时拦截，不发送给LLM\n\n"
-                "用法:\n"
-                "/blockword add <关键词> — 添加屏蔽词\n"
-                "/blockword remove <关键词> — 移除屏蔽词\n"
-                "/blockword list — 查看所有屏蔽词"
-            ).use_t2i(False)
+            return self._get_help_message()
 
         parts = message_str.split(maxsplit=1)
         subcmd = parts[0].lower()
@@ -130,6 +130,17 @@ class BlockWords(Star):
         else:
             return CommandResult().message("错误：未知子命令，有效命令为 add / remove / list")
 
+    def _get_help_message(self):
+        """返回插件的帮助信息"""
+        return CommandResult().message(
+            "关键词屏蔽插件 — 消息完全匹配屏蔽词时拦截，不发送给LLM\n\n"
+            "用法:\n"
+            "/blockword add <关键词> — 添加屏蔽词\n"
+            "/blockword remove <关键词> — 移除屏蔽词\n"
+            "/blockword list — 查看所有屏蔽词"
+        ).use_t2i(False)
+
     async def terminate(self):
+        """插件卸载时保存数据"""
         self._save_data_file()
         logger.info("[BlockWords] 插件已卸载，数据已保存")

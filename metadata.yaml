@@ -1,6 +1,7 @@
-name: astrbot_plugin_gengstudy # 插件唯一识别名，以 astrbot_plugin_ 前缀开头
-display_name: 梗学习 # 用于展示的名字，可以是方便人类阅读的名字（需要版本 >= v4.5.0，低版本不会报错，请放心填写）
-desc: 一个用来让llm每天定时检测bilibiliup主梗百科是否更新视频和学习视频中介绍的梗的插件 # 插件简短描述
-version: v1.0.0 # 插件版本号。格式：v1.1.1 或者 v1.1
-author: 白明 # 作者
-repo: https://github.com/hwesuer/plugin_test # 插件的仓库地址
+name: astrbot_plugin_blockwords
+display_name: 关键词屏蔽
+desc: 当用户发送的消息完全匹配预设关键词时，拦截该消息不发送给LLM
+help: /blockword add/remove/list — 管理屏蔽关键词列表
+version: v1.0.0
+author: User
+repo: https://github.com/user/astrbot-plugin-blockwords

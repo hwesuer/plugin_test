@@ -1,0 +1,14 @@
+{
+  "keywords": {
+    "description": "初始屏蔽关键词",
+    "hint": "消息完全匹配关键词时将被拦截不发送给LLM（如添加\"好\"则屏蔽\"好\"，不屏蔽\"好我这就去\"）",
+    "type": "list",
+    "default": []
+  },
+  "silent_block": {
+    "description": "静默屏蔽",
+    "hint": "开启后屏蔽消息时不作任何回复；关闭后会提示发送者消息已被屏蔽",
+    "type": "bool",
+    "default": true
+  }
+}

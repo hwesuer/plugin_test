@@ -9,14 +9,17 @@ from astrbot.api.star import register, Star
 
 logger = logging.getLogger("astrbot")
 
+PLUGIN_NAME = "astrbot_plugin_blockwords"
 
-@register("astrbot_plugin_blockwords", "User", "关键词屏蔽插件：消息完全匹配屏蔽词时拦截，不发送给LLM", "1.0.0")
+
+@register(PLUGIN_NAME, "User", "关键词屏蔽插件：消息完全匹配屏蔽词时拦截，不发送给LLM", "1.0.0")
 class BlockWords(Star):
     def __init__(self, context: Context, config: AstrBotConfig) -> None:
         super().__init__(context)
         self.config = config
         self.keywords = []
-        self.data_file = f"data/astrbot_plugin_blockwords_data.json"
+        self.data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+        self.data_file = os.path.join(self.data_dir, "blockwords_data.json")
         self._load_keywords()
 
     def _load_keywords(self):

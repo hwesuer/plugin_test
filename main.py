@@ -9,8 +9,6 @@ from astrbot.api.star import register, Star
 
 logger = logging.getLogger("astrbot")
 
-DATA_FILE = "blockwords_data.json"
-
 
 @register("astrbot_plugin_blockwords", "User", "关键词屏蔽插件：消息完全匹配屏蔽词时拦截，不发送给LLM", "1.0.0")
 class BlockWords(Star):
@@ -18,33 +16,28 @@ class BlockWords(Star):
         super().__init__(context)
         self.config = config
         self.keywords = []
-        self.data_file = os.path.join(context.plugin_data_dir, DATA_FILE)
-
-    async def initialize(self):
+        self.data_file = f"data/astrbot_plugin_blockwords_data.json"
         self._load_keywords()
 
     def _load_keywords(self):
-        saved = self._load_data_file()
-        if "keywords" in saved:
-            self.keywords = saved["keywords"]
-        else:
-            raw = self.config.get("keywords", [])
-            if isinstance(raw, list):
-                self.keywords = [str(k).strip() for k in raw if str(k).strip()]
-            elif isinstance(raw, str) and raw.strip():
-                self.keywords = [k.strip() for k in raw.split(",") if k.strip()]
-            self._save_data_file()
-        logger.info(f"[BlockWords] 已加载 {len(self.keywords)} 个屏蔽关键词")
-
-    def _load_data_file(self) -> dict:
         try:
             os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
             if os.path.exists(self.data_file):
                 with open(self.data_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    saved = json.load(f)
+                    self.keywords = saved.get("keywords", [])
+                    logger.info(f"[BlockWords] 从数据文件加载 {len(self.keywords)} 个屏蔽关键词")
+                    return
         except Exception as e:
-            logger.error(f"[BlockWords] 加载数据文件失败: {e}")
-        return {}
+            logger.error(f"[BlockWords] 读取数据文件失败: {e}")
+
+        raw = self.config.get("keywords", [])
+        if isinstance(raw, list):
+            self.keywords = [str(k).strip() for k in raw if str(k).strip()]
+        elif isinstance(raw, str) and raw.strip():
+            self.keywords = [k.strip() for k in raw.split(",") if k.strip()]
+        self._save_data_file()
+        logger.info(f"[BlockWords] 从配置加载 {len(self.keywords)} 个屏蔽关键词")
 
     def _save_data_file(self):
         try:

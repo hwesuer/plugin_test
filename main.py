@@ -10,6 +10,7 @@ from astrbot.api.star import register, Star
 logger = logging.getLogger("astrbot")
 
 PLUGIN_NAME = "astrbot_plugin_blockwords"
+DEFAULT_KEYWORDS = ["好"]  # 硬编码默认关键词，与 _conf_schema.json 保持一致
 
 
 @register(PLUGIN_NAME, "User", "关键词屏蔽插件：消息完全匹配屏蔽词时拦截，不发送给LLM", "1.0.0")
@@ -18,13 +19,21 @@ class BlockWords(Star):
         super().__init__(context)
         self.config = config
         self.keywords = []
-        self.data_file = f"data/{PLUGIN_NAME}_data.json"
-        os.makedirs("data", exist_ok=True)
-
+        
+        # 使用插件自身目录下的 data 文件夹存储数据文件（确保路径唯一）
+        data_dir = os.path.join(self.plugin_dir, "data")
+        os.makedirs(data_dir, exist_ok=True)
+        self.data_file = os.path.join(data_dir, f"{PLUGIN_NAME}_data.json")
+        
+        # 优先从数据文件加载，如果文件不存在则从配置加载并保存
         if os.path.exists(self.data_file):
             self._load_from_file()
         else:
             self._load_from_config()
+            # 如果从配置也没加载到任何关键词，则使用硬编码默认值
+            if not self.keywords:
+                self.keywords = DEFAULT_KEYWORDS.copy()
+                logger.info(f"[BlockWords] 使用硬编码默认屏蔽词: {self.keywords}")
             self._save_data_file()
 
     def _load_from_file(self):
@@ -49,9 +58,10 @@ class BlockWords(Star):
 
     def _save_data_file(self):
         try:
-            os.makedirs("data", exist_ok=True)
+            os.makedirs(os.path.dirname(self.data_file), exist_ok=True)
             with open(self.data_file, "w", encoding="utf-8") as f:
                 json.dump({"keywords": self.keywords}, f, ensure_ascii=False, indent=2)
+            logger.debug(f"[BlockWords] 数据已保存至 {self.data_file}")
         except Exception as e:
             logger.error(f"[BlockWords] 保存数据文件失败: {e}")
 
@@ -71,10 +81,11 @@ class BlockWords(Star):
     @filter.command("blockword")
     async def blockword(self, message: AstrMessageEvent):
         message_str = message.message_str.strip()
-        if message_str.startswith("/屏蔽词"):
-            message_str = message_str[len("/屏蔽词"):].strip()
-        if message_str.startswith("/blockword"):
-            message_str = message_str[len("/blockword"):].strip()
+        # 去除命令前缀（装饰器已处理，但为了兼容保留）
+        for prefix in ("/屏蔽词", "/blockword"):
+            if message_str.startswith(prefix):
+                message_str = message_str[len(prefix):].strip()
+                break
 
         if not message_str:
             return CommandResult().message(

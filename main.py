@@ -93,7 +93,7 @@ class BlockWords(Star):
             return CommandResult()
 
     @filter.on_llm_request()
-    async def block_llm_request(self, event: AstrMessageEvent):
+    async def block_llm_request(self, event: AstrMessageEvent, *args, **kwargs):
         if getattr(event, "_blockwords_blocked", False):
             logger.info("[BlockWords] on_llm_request 终止事件传播")
             event.stop_event()

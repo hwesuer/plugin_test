@@ -92,10 +92,10 @@ class BlockWords(Star):
                 return CommandResult().message(f"消息已被屏蔽: {message_str}")
             return CommandResult()
 
-    async def on_llm_request(self, event: AstrMessageEvent):
-        """pipeline 钩子：在 LLM 调用前阻断被屏蔽的消息"""
+    @filter.on_llm_request()
+    async def block_llm_request(self, event: AstrMessageEvent):
         if getattr(event, "_blockwords_blocked", False):
-            logger.info(f"[BlockWords] on_llm_request 终止事件传播")
+            logger.info("[BlockWords] on_llm_request 终止事件传播")
             event.stop_event()
 
     @filter.command("屏蔽词")

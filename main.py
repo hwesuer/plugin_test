@@ -87,10 +87,10 @@ class BlockWords(Star):
             return
         if self.keywords and message_str in self.keywords:
             logger.info(f"[BlockWords] 已屏蔽消息: \"{message_str}\"")
-            if self.config.get("silent_block", True):
-                return CommandResult()
-            else:
+            message.stop_event()
+            if not self.config.get("silent_block", True):
                 return CommandResult().message(f"消息已被屏蔽: {message_str}")
+            return CommandResult()
 
     @filter.command("屏蔽词")
     @filter.command("blockword")

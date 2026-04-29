@@ -86,11 +86,17 @@ class BlockWords(Star):
         if message_str.startswith("/"):
             return
         if self.keywords and message_str in self.keywords:
-            logger.info(f"[BlockWords] 已屏蔽消息: \"{message_str}\"")
-            message.stop_event()
+            logger.info(f"[BlockWords] 标记屏蔽: \"{message_str}\"")
+            message._blockwords_blocked = True
             if not self.config.get("silent_block", True):
                 return CommandResult().message(f"消息已被屏蔽: {message_str}")
             return CommandResult()
+
+    async def on_llm_request(self, event: AstrMessageEvent):
+        """pipeline 钩子：在 LLM 调用前阻断被屏蔽的消息"""
+        if getattr(event, "_blockwords_blocked", False):
+            logger.info(f"[BlockWords] on_llm_request 终止事件传播")
+            event.stop_event()
 
     @filter.command("屏蔽词")
     @filter.command("blockword")

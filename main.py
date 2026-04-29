@@ -22,42 +22,63 @@ class BlockWords(Star):
         os.makedirs("data", exist_ok=True)
 
         if os.path.exists(self.data_file):
-            self._load_from_file()
-            # 旧版数据文件可能由 auto_save 生成，若与配置一致则视为自动生成，删除后走配置
-            config_raw = self._parse_config_keywords()
-            if set(self.keywords) == set(config_raw):
-                logger.info("[BlockWords] 数据文件与配置一致，视为自动生成，转为配置管理")
-                os.remove(self.data_file)
-                self.keywords = config_raw
-            else:
+            data = self._read_data_file()
+            managed = data.get("managed", False)
+            if managed:
+                self.keywords = data.get("keywords", [])
                 logger.info(f"[BlockWords] 从数据文件加载 {len(self.keywords)} 个屏蔽关键词")
+            else:
+                os.remove(self.data_file)
+                logger.info("[BlockWords] 旧数据文件已删除，从配置加载")
+                self.keywords = self._get_keywords()
         else:
-            self.keywords = self._parse_config_keywords()
+            self.keywords = self._get_keywords()
             logger.info(f"[BlockWords] 从配置加载 {len(self.keywords)} 个屏蔽关键词")
 
-    def _load_from_file(self):
+    def _read_data_file(self) -> dict:
         try:
             with open(self.data_file, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                self.keywords = data.get("keywords", [])
+                return json.load(f)
         except Exception as e:
             logger.error(f"[BlockWords] 读取数据文件失败: {e}")
-
-    def _parse_config_keywords(self):
-        raw = self.config.get("keywords", [])
-        if isinstance(raw, list):
-            return [str(k).strip() for k in raw if str(k).strip()]
-        elif isinstance(raw, str) and raw.strip():
-            return [k.strip() for k in raw.split(",") if k.strip()]
-        return []
+            return {}
 
     def _save_data_file(self):
         try:
             os.makedirs("data", exist_ok=True)
             with open(self.data_file, "w", encoding="utf-8") as f:
-                json.dump({"keywords": self.keywords}, f, ensure_ascii=False, indent=2)
+                json.dump({"keywords": self.keywords, "managed": True}, f, ensure_ascii=False, indent=2)
         except Exception as e:
             logger.error(f"[BlockWords] 保存数据文件失败: {e}")
+
+    def _get_keywords(self) -> list:
+        keys = self._read_stored_config()
+        if not keys:
+            keys = self._read_schema_defaults()
+        return keys
+
+    def _read_stored_config(self) -> list:
+        raw = self.config.get("keywords", [])
+        if isinstance(raw, list):
+            result = [str(k).strip() for k in raw if str(k).strip()]
+        elif isinstance(raw, str) and raw.strip():
+            result = [k.strip() for k in raw.split(",") if k.strip()]
+        else:
+            result = []
+        return result
+
+    def _read_schema_defaults(self) -> list:
+        try:
+            schema_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_conf_schema.json")
+            if os.path.exists(schema_path):
+                with open(schema_path, "r", encoding="utf-8") as f:
+                    schema = json.load(f)
+                default = schema.get("keywords", {}).get("default", [])
+                if isinstance(default, list):
+                    return [str(k).strip() for k in default if str(k).strip()]
+        except Exception as e:
+            logger.error(f"[BlockWords] 读取 _conf_schema.json 失败: {e}")
+        return []
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def on_message_check(self, message: AstrMessageEvent):
@@ -122,7 +143,7 @@ class BlockWords(Star):
                 return CommandResult().message("当前无屏蔽关键词")
 
         elif subcmd == "sync":
-            self.keywords = self._parse_config_keywords()
+            self.keywords = self._get_keywords()
             self._save_data_file()
             return CommandResult().message(
                 f"已从配置同步屏蔽关键词（{len(self.keywords)}个）: {', '.join(self.keywords)}"
